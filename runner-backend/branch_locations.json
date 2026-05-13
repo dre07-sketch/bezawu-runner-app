@@ -1,0 +1,47 @@
+[
+  {
+    "id": "BZWB-635088",
+    "name": "addis ketema",
+    "address": "addis ketema",
+    "map_pin": "https://maps.app.goo.gl/V1QkWdSqZ6W1rrav7",
+    "phone": "efwefwe",
+    "is_busy": false,
+    "status": "ACTIVE"
+  },
+  {
+    "id": "BZWB-416120",
+    "name": "bole",
+    "address": "bole",
+    "map_pin": "https://maps.app.goo.gl/9W6rtAEPfqRJtDiK6",
+    "phone": "4234324",
+    "is_busy": false,
+    "status": "ACTIVE"
+  },
+  {
+    "id": "BZWB-114534",
+    "name": "Bole Branch",
+    "address": "Bole Road, Addis Ababa",
+    "map_pin": "https://maps.app.goo.gl/9W6rtAEPfqRJtDiK6",
+    "phone": "0911000000",
+    "is_busy": false,
+    "status": "ACTIVE"
+  },
+  {
+    "id": "BZWB-054342",
+    "name": "kazzanchis",
+    "address": "kazzanchis",
+    "map_pin": "https://maps.app.goo.gl/xMWHg3ic99XfKBwV7",
+    "phone": "05648",
+    "is_busy": false,
+    "status": "ACTIVE"
+  },
+  {
+    "id": "BZWB-478244",
+    "name": "summit",
+    "address": "summit",
+    "map_pin": "https://maps.app.goo.gl/Fx4PD8UwJSeZudzE9",
+    "phone": "34534534",
+    "is_busy": false,
+    "status": "ACTIVE"
+  }
+]

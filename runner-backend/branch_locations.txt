@@ -1,0 +1,49 @@
+
+=== BRANCH LOCATIONS ===
+
+Branch 1:
+  ID: BZWB-635088
+  Name: addis ketema
+  Address: addis ketema
+  Map Pin: https://maps.app.goo.gl/V1QkWdSqZ6W1rrav7
+  Phone: efwefwe
+  Status: ACTIVE
+  Is Busy: false
+
+Branch 2:
+  ID: BZWB-416120
+  Name: bole
+  Address: bole
+  Map Pin: https://maps.app.goo.gl/9W6rtAEPfqRJtDiK6
+  Phone: 4234324
+  Status: ACTIVE
+  Is Busy: false
+
+Branch 3:
+  ID: BZWB-114534
+  Name: Bole Branch
+  Address: Bole Road, Addis Ababa
+  Map Pin: https://maps.app.goo.gl/9W6rtAEPfqRJtDiK6
+  Phone: 0911000000
+  Status: ACTIVE
+  Is Busy: false
+
+Branch 4:
+  ID: BZWB-054342
+  Name: kazzanchis
+  Address: kazzanchis
+  Map Pin: https://maps.app.goo.gl/xMWHg3ic99XfKBwV7
+  Phone: 05648
+  Status: ACTIVE
+  Is Busy: false
+
+Branch 5:
+  ID: BZWB-478244
+  Name: summit
+  Address: summit
+  Map Pin: https://maps.app.goo.gl/Fx4PD8UwJSeZudzE9
+  Phone: 34534534
+  Status: ACTIVE
+  Is Busy: false
+
+Total branches: 5
