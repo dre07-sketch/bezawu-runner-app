@@ -1,5 +1,142 @@
 const express = require('express');
 const router = express.Router();
+
+// ─── GET /:id/receipt ────────────────────────────────────────────────────────
+// Added for automatic receipt download consistency
+router.get('/:id/receipt', async (req, res) => {
+    // Robustness: strip trailing colon if present (sometimes happens with email links)
+    const orderId = req.params.id.replace(/:$/, '').trim();
+    try {
+        const orderRes = await pool.query(`
+            SELECT o.*, b.name as branch_name, b.address as branch_address, 
+                   v.name as vendor_name
+            FROM orders o
+            JOIN branches b ON o.branch_id = b.id
+            JOIN vendors v ON b.vendor_id = v.id
+            WHERE o.id = $1
+        `, [orderId]);
+
+        if (orderRes.rows.length === 0) return res.status(404).send('Order not found');
+        const order = orderRes.rows[0];
+
+        const itemsRes = await pool.query(`
+            SELECT oi.quantity, oi.price_at_purchase, p.name as product_name
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = $1
+        `, [orderId]);
+
+        const items = itemsRes.rows;
+        const totalPrice = parseFloat(order.total_price || 0);
+
+        const receiptHtml = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Digital Receipt - ${orderId}</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+                <style>
+                    :root {
+                        --primary: #10b981;
+                        --primary-dark: #059669;
+                        --glass: rgba(255, 255, 255, 0.85);
+                        --glass-border: rgba(255, 255, 255, 0.4);
+                        --text-main: #0f172a;
+                        --text-muted: #64748b;
+                    }
+                    * { box-sizing: border-box; }
+                    body {
+                        font-family: 'Plus Jakarta Sans', sans-serif;
+                        color: var(--text-main);
+                        margin: 0; padding: 0; min-height: 100vh;
+                        display: flex; align-items: center; justify-content: center;
+                        background: #f1f5f9; overflow-x: hidden;
+                    }
+                    .bg-blobs { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); overflow: hidden; }
+                    .blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; animation: float 20s infinite alternate; }
+                    .blob-1 { width: 500px; height: 500px; background: #10b981; top: -100px; right: -100px; }
+                    .blob-2 { width: 400px; height: 400px; background: #34d399; bottom: -100px; left: -100px; animation-delay: -5s; }
+                    @keyframes float { 0% { transform: translate(0, 0) scale(1); } 100% { transform: translate(100px, 50px) scale(1.1); } }
+                    .receipt-container { width: 100%; max-width: 550px; padding: 20px; animation: fadeIn 0.8s ease-out; }
+                    @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+                    .glass-card { background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 35px; border: 1px solid var(--glass-border); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1); overflow: hidden; }
+                    .header { padding: 60px 40px 40px; text-align: center; background: linear-gradient(to bottom, rgba(16, 185, 129, 0.05), transparent); }
+                    .logo-container { width: 80px; height: 80px; background: #fff; border-radius: 22px; margin: 0 auto 25px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+                    .status-badge { display: inline-block; padding: 8px 20px; background: #dcfce7; color: #166534; border-radius: 100px; font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; }
+                    h1 { margin: 0; font-family: 'Outfit', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+                    .content { padding: 40px; }
+                    .info-section { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-bottom: 30px; border-bottom: 1px dashed #e2e8f0; }
+                    .item-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid rgba(226, 232, 240, 0.5); }
+                    .item-name { font-weight: 600; font-size: 15px; }
+                    .item-price { font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 16px; }
+                    .total-card { background: #f8fafc; border-radius: 25px; padding: 25px; margin-top: 20px; }
+                    .grand-total-row { margin-top: 15px; padding-top: 15px; border-top: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+                    .total-amount { font-family: 'Outfit', sans-serif; font-size: 28px; font-weight: 800; color: var(--primary); }
+                    .actions { display: flex; gap: 15px; margin-top: 40px; }
+                    .btn { flex: 1; padding: 18px; border-radius: 18px; border: none; font-weight: 800; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; font-size: 14px; }
+                    .btn-primary { background: var(--primary); color: white; box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.4); }
+                    .btn-secondary { background: white; color: var(--text-main); border: 1px solid #e2e8f0; }
+                    .footer { text-align: center; padding: 40px; color: var(--text-muted); font-size: 12px; }
+                    @media print { .bg-blobs, .actions, .status-badge { display: none; } body { background: white; } .glass-card { box-shadow: none; border: 1px solid #eee; } }
+                </style>
+            </head>
+            <body>
+                <div class="bg-blobs"><div class="blob blob-1"></div><div class="blob blob-2"></div></div>
+                <div class="receipt-container">
+                    <div class="glass-card">
+                        <div class="header">
+                            <div class="status-badge">Order Confirmed</div>
+                            <div class="logo-container">
+                                <img src="${order.vendor_logo || 'https://bezawcurbside.com/logo.png'}" style="width: 50px; height: 50px; border-radius: 12px;">
+                            </div>
+                            <h1>Official Receipt</h1>
+                            <div style="color: var(--text-muted); font-size: 14px; margin-top: 10px;">ID: #${orderId.slice(-12).toUpperCase()}</div>
+                        </div>
+                        <div class="content">
+                            <div class="info-section">
+                                <div><div style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Merchant</div><div style="font-weight:700;">${order.vendor_name}</div><div style="font-size:13px; color:var(--text-muted);">${order.branch_name}</div></div>
+                                <div style="text-align: right;"><div style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Issued On</div><div style="font-weight:700;">${new Date(order.created_at).toLocaleDateString()}</div><div style="font-size:13px; color:var(--text-muted);">${new Date(order.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div></div>
+                            </div>
+                            <div style="margin: 35px 0;">
+                                ${items.map(item => `
+                                    <div class="item-row">
+                                        <div><div class="item-name">${item.product_name}</div><div style="font-size:13px; color:var(--text-muted);">Qty: ${item.quantity}</div></div>
+                                        <div class="item-price">${(parseFloat(item.price_at_purchase) * item.quantity).toLocaleString()} ETB</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="total-card">
+                                <div class="grand-total-row">
+                                    <span style="font-weight: 800; font-size: 18px;">Total Paid</span>
+                                    <span class="total-amount">${totalPrice.toLocaleString()} ETB</span>
+                                </div>
+                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 10px; text-align: center;">
+                                    Paid via ${order.payment_method ? order.payment_method.replace('_', ' ').toUpperCase() : 'CONFIRMED'}
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <button onclick="window.print()" class="btn btn-primary">Save as PDF</button>
+                                <a href="https://bezawcurbside.com" class="btn btn-secondary">Done</a>
+                            </div>
+                        </div>
+                        <div class="footer">&copy; 2026 Bezaw Curbside Services PLC</div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        res.setHeader('Content-Type', 'text/html');
+        res.send(receiptHtml);
+    } catch (err) {
+        console.error('Receipt generation error:', err);
+        res.status(500).send('Internal Server Error');
+    }
+});
 require('dotenv').config();
 
 const { verifyToken, pool } = require('../middleware/authMiddleware');
@@ -712,5 +849,6 @@ router.post('/', verifyToken, async (req, res) => {
         client.release();
     }
 });
+
 
 module.exports = router;

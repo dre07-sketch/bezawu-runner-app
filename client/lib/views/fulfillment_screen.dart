@@ -49,50 +49,89 @@ class _FulfillmentScreenState extends State<FulfillmentScreen> {
 
     if (_isConfirmed) {
       return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: const BoxDecoration(
-                    color: AppTheme.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: AppTheme.primary, blurRadius: 40, offset: Offset(0, 10)),
-                    ],
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: isDark 
+                ? [const Color(0xFF0F172A), const Color(0xFF020617)]
+                : [const Color(0xFFF8FAFC), Colors.white],
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.elasticOut,
+                    builder: (context, value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primary.withOpacity(0.5 * value),
+                                blurRadius: 40 * value,
+                                spreadRadius: 10 * value,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(LucideIcons.checkCircle2, color: Colors.white, size: 60),
+                        ),
+                      );
+                    },
                   ),
-                  child: const Icon(LucideIcons.shieldCheck, color: Colors.white, size: 48),
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'ALL SET!',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: -1),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'This order has been handed over successfully.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1),
-                ),
-                const SizedBox(height: 48),
-                SizedBox(
-                  width: 200,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFF1E293B),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  const SizedBox(height: 48),
+                  const Text(
+                    'HANDOVER COMPLETE',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -1),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'The customer has been notified and their digital receipt has been dispatched.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15, 
+                        fontWeight: FontWeight.w600, 
+                        color: Colors.grey.withOpacity(0.7),
+                        height: 1.5,
+                      ),
                     ),
-                    child: const Text('Return to Hub', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1)),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 64),
+                  SizedBox(
+                    width: 220,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        elevation: 10,
+                        shadowColor: AppTheme.primary.withOpacity(0.4),
+                      ),
+                      child: const Text(
+                        'RETURN TO HUB',
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
