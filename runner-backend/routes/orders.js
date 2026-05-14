@@ -3,6 +3,67 @@ const router = express.Router();
 require('dotenv').config();
 
 const { verifyToken, pool } = require('../middleware/authMiddleware');
+const sendStatusEmail = require('../utils/email');
+
+async function notifyStatusChange(orderId, status) {
+    try {
+        const orderRes = await pool.query(`
+            SELECT o.*, c.email as customer_email, b.name as branch_name, b.address as branch_address
+            FROM orders o 
+            LEFT JOIN customers c ON o.customer_id = c.id
+            LEFT JOIN branches b ON o.branch_id = b.id
+            WHERE o.id = $1
+        `, [orderId]);
+
+        if (orderRes.rows.length === 0) return;
+        const order = orderRes.rows[0];
+
+        if (!order.customer_email || order.customer_email.trim() === '') {
+            return; // No email to send
+        }
+
+        const itemsRes = await pool.query(`
+            SELECT oi.*, p.name as product_name
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = $1
+        `, [orderId]);
+
+        let subject = `Bezaw Curbside: Order Status Update`;
+        let title = 'Order Update';
+        let message = `Your order ${order.id} status has been updated to ${status}.`;
+
+        let details = {
+            vendor: 'Bezaw Partner',
+            branch: order.branch_name,
+            location: order.branch_address,
+            vehicle: `${order.car_color || ''} ${order.car_model || ''} (${order.car_plate || ''})`.trim(),
+            paymentMethod: order.payment_method,
+            items: itemsRes.rows,
+            totalPrice: order.total_price,
+            showReceipt: false
+        };
+
+        const upperStatus = status.toUpperCase();
+        if (upperStatus === 'PREPARING') {
+            title = 'Order Preparing 🍳';
+            message = 'Our team is currently preparing your order. We will let you know when it is ready for pickup!';
+        } else if (upperStatus === 'READY_FOR_PICKUP' || upperStatus === 'READY') {
+            title = 'Order Ready! 🎁';
+            message = 'Your order is packed and ready! Please proceed to the pickup zone and show your ID or QR code.';
+            subject = 'Your Bezaw Order is READY!';
+        } else if (['COMPLETED', 'HANDOVER_COMPLETE', 'COLLECTED', 'DELIVERED', 'PICKED_UP'].includes(upperStatus)) {
+            title = 'Order Completed ✨';
+            message = 'Thank you for Shopping with Bezaw! We hope you enjoyed the Addis Drive-Thru experience. Your receipt is now available for download below.';
+            subject = 'Bezaw Order Receipt: Completed';
+            details.showReceipt = true;
+        }
+
+        await sendStatusEmail(order.customer_email, subject, title, message, order.id, details);
+    } catch (err) {
+        console.error(`[Email Notification Error] Order ${orderId}: ${err.message}`);
+    }
+}
 
 // Schema Sync (Lazy migration)
 (async () => {
@@ -296,6 +357,10 @@ router.put('/employee-view/:id/status', verifyToken, async (req, res) => {
         }
 
         await client.query('COMMIT');
+        
+        // Notify Customer asynchronously
+        notifyStatusChange(order.id, status).catch(console.error);
+        
         res.json(order);
     } catch (err) {
         await client.query('ROLLBACK');
@@ -418,6 +483,10 @@ router.put('/:id/status', verifyToken, async (req, res) => {
         }
 
         await client.query('COMMIT');
+        
+        // Notify Customer asynchronously
+        notifyStatusChange(order.id, status).catch(console.error);
+        
         res.json(order);
     } catch (err) {
         await client.query('ROLLBACK');
